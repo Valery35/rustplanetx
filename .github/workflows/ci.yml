@@ -1,0 +1,59 @@
+# RustPlanetX - расширение RustGIS для PlanetX Lite.
+# Copyright (C) 2026 ООО «Информ++». Лицензия Apache 2.0.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Тесты, clippy под wasm32, сборка модуля и проверки реестра RustGIS
+# (scripts/build.py хранилища opengeos/rustgis-plugins) над пакетом.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy
+      - run: cargo test
+      - run: cargo clippy --release --target wasm32-unknown-unknown -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
+      - run: cargo build --release --target wasm32-unknown-unknown
+      - name: Пакет и проверки реестра
+        shell: pwsh
+        run: ./scripts/package.ps1 -NoBuild
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Проверки реестра RustGIS
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/opengeos/rustgis-plugins/main/scripts/build.py -o target/registry-build.py
+          python - <<'EOF'
+          import importlib.util, pathlib
+          spec = importlib.util.spec_from_file_location("b", "target/registry-build.py")
+          b = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(b)
+          data = next(pathlib.Path("dist").glob("*.rgplugin")).read_bytes()
+          read = b.read_package(data, "rustplanetx")
+          if read:
+              b.check_manifest(read[0], "rustplanetx")
+              for name in ("check_tab", "check_panel"):
+                  if hasattr(b, name):
+                      getattr(b, name)(read[0], "rustplanetx")
+              b.check_module(read[1], "rustplanetx")
+          for p in b.problems:
+              print("error:", p)
+          raise SystemExit(1 if b.problems else 0)
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustplanetx
+          path: dist/*.rgplugin

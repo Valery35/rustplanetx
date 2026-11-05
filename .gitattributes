@@ -1,0 +1,3 @@
+# LF везде: plugin.json входит в пакет, его байты и SHA-256 одни на любой машине.
+* text=auto eol=lf
+*.wasm binary
