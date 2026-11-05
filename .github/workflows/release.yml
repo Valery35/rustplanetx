@@ -1,0 +1,77 @@
+# RustPlanetX - расширение RustGIS для PlanetX Lite.
+# Copyright (C) 2026 ООО «Информ++». Лицензия Apache 2.0.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Выпуск по метке v<версия plugin.json>, как release.yml шаблона
+# opengeos/rustgis-plugin-template (MIT):
+#   git tag v0.1.0 && git push origin v0.1.0
+# Выпуск несёт пакет .rgplugin и запись реестра RustGIS.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  # RustGIS для пробного запуска: первая версия с панелями, деревом и host.fetch.
+  RUSTGIS_VERSION: v0.5.0
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Метка равна версии plugin.json
+        run: |
+          version=$(jq -r .version plugin.json)
+          test "$GITHUB_REF_NAME" = "v$version" || { echo "метка $GITHUB_REF_NAME, а версия plugin.json $version"; exit 1; }
+      - run: cargo test
+      - run: cargo build --release --target wasm32-unknown-unknown
+      - name: Пакет
+        shell: pwsh
+        run: ./scripts/package.ps1 -NoBuild
+      - name: Пробный запуск в RustGIS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$RUSTGIS_VERSION" --repo opengeos/RustGIS --pattern 'RustGIS-*-linux-x86_64.tar.gz' --dir "$RUNNER_TEMP"
+          tar xzf "$RUNNER_TEMP"/RustGIS-*-linux-x86_64.tar.gz -C "$RUNNER_TEMP"
+          cli=$(ls "$RUNNER_TEMP"/RustGIS-*-linux-x86_64/rustgis-cli)
+          "$cli" run --no-plugins --plugin dist/rustplanetx/ --sample \
+            --cmd 'map.goToXY={"lon": 56.2294, "lat": 58.0105, "scale": 25000}' \
+            --cmd 'plugin:rustplanetx/open-in-lite' \
+            --cmd 'plugin:rustplanetx/add-source={"source": "ready:opentopomap"}' \
+            --cmd 'plugin:rustplanetx/add-source={"source": "body:mars"}' \
+            --cmd 'plugin:rustplanetx/add-source={"source": "gibs:clouds"}' \
+            --cmd 'map.tiles' | tee "$RUNNER_TEMP/smoke.json"
+          grep -q '"name": "OpenTopoMap"' "$RUNNER_TEMP/smoke.json"
+          grep -q 'planetx-bodies-imagery/main/mars' "$RUNNER_TEMP/smoke.json"
+      - name: Выпуск
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          package="dist/rustplanetx-$version.rgplugin"
+          sha=$(sha256sum "$package" | cut -d' ' -f1)
+          {
+            echo "RustGIS 0.5.0 or newer. Install it from **Plugins › Plugin Manager › Settings › Install From File…**, or with \`rustgis-cli plugins install rustplanetx-$version.rgplugin\`."
+            echo
+            echo "- **Open in PlanetX Lite**: a link to [PlanetX Lite](https://valery35.github.io/planetx-lite/) at the map's view."
+            echo "- **PlanetX panel**: ready basemaps, NASA GIBS on a day, Esri Wayback releases and imagery of the Moon, Mars and other bodies as tile layers."
+            echo
+            echo "SHA-256: \`$sha\`"
+            echo
+            echo "Registry entry for [opengeos/rustgis-plugins](https://github.com/opengeos/rustgis-plugins):"
+            echo
+            echo '```json'
+            cat dist/rustplanetx.json
+            echo '```'
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" "$package" dist/rustplanetx.json --title "RustPlanetX $version" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag

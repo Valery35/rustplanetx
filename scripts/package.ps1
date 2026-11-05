@@ -64,7 +64,7 @@ try {
 
 $sha = (Get-FileHash $package -Algorithm SHA256).Hash.ToLowerInvariant()
 $url = "https://github.com/Valery35/rustplanetx/releases/download/v$version/$id-$version.rgplugin"
-$entryJson = [ordered]@{ id = $id; source = [ordered]@{ url = $url; sha256 = $sha }; categories = @('Basemaps', 'Utilities') } | ConvertTo-Json -Depth 3
+$entryJson = [ordered]@{ id = $id; source = [ordered]@{ url = $url; sha256 = $sha }; categories = @('Basemaps', 'Imagery') } | ConvertTo-Json -Depth 3
 [System.IO.File]::WriteAllText((Join-Path $dist "$id.json"), $entryJson + "`n", (New-Object System.Text.UTF8Encoding($false)))
 
 Write-Output ("dist/{0}-{1}.rgplugin  {2:N0} bytes  sha256 {3}" -f $id, $version, (Get-Item $package).Length, $sha)
