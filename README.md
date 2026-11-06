@@ -1,53 +1,52 @@
 # RustPlanetX
 
-RustPlanetX is a [RustGIS](https://github.com/opengeos/RustGIS) plugin that links RustGIS to
-[PlanetX Lite](https://valery35.github.io/planetx-lite/), a 3D globe in the browser with site
-analysis, multimedia tours, KML and `.planetx` scenes.
+RustPlanetX links [RustGIS](https://github.com/opengeos/RustGIS) with the
+[PlanetX Lite](https://github.com/Valery35/planetx-lite) 3D globe, as the PlanetX plugin links
+QGIS with its globe.
 
-- **Open in PlanetX Lite** builds a link to PlanetX Lite at the map's view:
-  `https://valery35.github.io/planetx-lite/?pose=latitude,longitude,distance,0,0`. The camera
-  distance gives the same ground metres per screen pixel as the map's scale. A RustGIS plugin
-  cannot open a browser, so the link appears in the panel and in the status bar. Copy it into
-  the browser.
-- **Catalogue** in the PlanetX panel adds PlanetX sources as tile layers:
-  - 19 ready basemaps (OpenStreetMap styles, Esri, NASA, USGS);
-  - 24 NASA GIBS layers on the day chosen with the slider (clouds, smoke, snow, gases, night
-    lights and more);
-  - Esri World Imagery Wayback releases since 2014;
-  - imagery of the Moon, Mars, Mercury, Venus, moons of Jupiter and Saturn, Ceres and Vesta.
+- The layers of the RustGIS project are listed in the globe's RustGIS project section, as the
+  PlanetX plugin lists the QGIS project's layers. They start switched off: a check shows a
+  layer on the globe in the colours of its RustGIS renderer (single symbol, graduated and
+  unique values). The list follows the project: a layer added, removed or restyled in RustGIS
+  changes on the globe within a second.
+- The globe follows the RustGIS map, and the map follows the globe once it stops moving.
+- A feature clicked on the globe with Identify is selected in RustGIS.
+- A layer of the globe goes to the RustGIS project from its menu, To the RustGIS project.
+- Terrain, imagery, site analysis, tours, KML and `.planetx` scenes are PlanetX Lite's.
 
-The panel, the day slider and the Wayback list need RustGIS 0.5.0. From scripts and
-`rustgis-cli` every source can be added by its id:
+## Use
 
-```sh
-rustgis-cli run --plugin dist/rustplanetx/ --sample \
-  --cmd 'plugin:rustplanetx/open-in-lite' \
-  --cmd 'plugin:rustplanetx/add-source={"source": "gibs:snow", "panel": {"day": 362}}' \
-  --cmd 'plugin:rustplanetx/add-source={"source": "body:mars"}'
-```
+1. Install `rustplanetx-<version>.rgplugin` in RustGIS 0.5.0 or newer:
+   **Plugins › Plugin Manager › Settings › Install From File…**.
+2. In RustGIS start the **MCP Relay** command (Ctrl+K), or tick **Let your Agents Control
+   RustGIS** in the AI Assistant's settings: RustGIS then starts the relay with the app.
+3. Click **PlanetX Globe** on the **Plugins** tab.
 
-The day slider runs from 0, a year back, to 365, the last ready day: 362 is three days
-before it. Source ids: `ready:<key>`, `gibs:<key>`, `wayback:<release>:<day>`, `body:<key>`, listed in
-`src/catalog.rs`.
+The globe connects to the relay on `127.0.0.1:8767` (`RUSTGIS_MCP_PORT`) with the token file
+RustGIS writes for its own `rustgis-cli mcp --attach`. Nothing leaves the computer.
 
-## Permissions
+## How it works
 
-`edit` and `network`: the plugin adds tile layers (`map.addTiles`) and reads the GIBS date
-series and the Wayback release list (`host.fetch`).
+The plugin is a [process plugin](https://github.com/opengeos/RustGIS/blob/main/docs/plugins.md#process-plugins):
+its program is PlanetX Lite itself. RustGIS runs `planetx-lite.exe rustgis-plugin`, which
+starts the globe as `planetx-lite.exe --rustgis` and returns. The link is in PlanetX Lite,
+`crates/ui/src/rustgislink.rs` and `crates/data/src/rustgis.rs`. A process plugin is not
+sandboxed, and the install prompt says so. The package is for Windows.
 
-## Building
+## Packaging
 
 ```sh
-rustup target add wasm32-unknown-unknown
-cargo test
-powershell -File scripts/package.ps1
+powershell -File scripts/package.ps1 -Lite path\to\planetx-lite.exe
 ```
 
-The script builds the module and writes `dist/rustplanetx-<version>.rgplugin`, the folder
-`dist/rustplanetx/` for **Plugin Manager › Settings › Add Plugin Folder…** and the registry entry
-`dist/rustplanetx.json`.
+It writes `dist/rustplanetx-<version>.rgplugin`, the folder `dist/rustplanetx/` for
+**Add Plugin Folder…**, and the registry entry `dist/rustplanetx.json`.
+
+A tag `v<version>` starts the Release workflow. It builds `rustplanetx.exe` from the
+PlanetX Lite commit named in `lite.ref` (`cargo build --release -p planetx-rustgis`),
+packages it, runs the registry checks of `opengeos/rustgis-plugins` and attaches the package
+and its registry entry to the GitHub release.
 
 ## License
 
-Apache 2.0, © 2026 Inform++ LLC. The sources' addresses come from PlanetX Lite. The tiles
-belong to their providers, and each layer carries its attribution.
+Apache 2.0, © 2026 Inform++ LLC.

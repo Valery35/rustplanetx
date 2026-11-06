@@ -1,11 +1,10 @@
-# RustPlanetX - расширение RustGIS для PlanetX Lite.
+# RustPlanetX - расширение RustGIS, глобус PlanetX со связью с картой RustGIS.
 # Copyright (C) 2026 ООО «Информ++». Лицензия Apache 2.0.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Выпуск по метке v<версия plugin.json>, как release.yml шаблона
-# opengeos/rustgis-plugin-template (MIT):
-#   git tag v0.1.0 && git push origin v0.1.0
-# Выпуск несёт пакет .rgplugin и запись реестра RustGIS.
+# Выпуск по метке v*: программа RustPlanetX собирается из исходников
+# PlanetX Lite на коммите из lite.ref, пакет проверяется scripts/build.py
+# реестра RustGIS и уходит в выпуск GitHub вместе с записью реестра.
 
 name: Release
 
@@ -14,64 +13,88 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 env:
-  # RustGIS для пробного запуска: первая версия с панелями, деревом и host.fetch.
-  RUSTGIS_VERSION: v0.5.0
+  RUST_VERSION: "1.99.1"
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Коммит PlanetX Lite
+        id: lite
+        shell: bash
+        run: echo "ref=$(tr -d '[:space:]' < lite.ref)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
         with:
-          targets: wasm32-unknown-unknown
-      - name: Метка равна версии plugin.json
+          repository: Valery35/planetx-lite
+          ref: ${{ steps.lite.outputs.ref }}
+          path: lite
+
+      - name: Rust ${{ env.RUST_VERSION }}
+        shell: bash
         run: |
-          version=$(jq -r .version plugin.json)
-          test "$GITHUB_REF_NAME" = "v$version" || { echo "метка $GITHUB_REF_NAME, а версия plugin.json $version"; exit 1; }
-      - run: cargo test
-      - run: cargo build --release --target wasm32-unknown-unknown
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
+
+      - name: Сборка RustPlanetX
+        shell: bash
+        working-directory: lite
+        run: cargo build --release --locked -p planetx-rustgis
+
       - name: Пакет
         shell: pwsh
-        run: ./scripts/package.ps1 -NoBuild
-      - name: Пробный запуск в RustGIS
+        run: ./scripts/package.ps1 -Lite lite/target/release/rustplanetx.exe
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Проверки реестра RustGIS
+        shell: bash
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/opengeos/rustgis-plugins/main/scripts/build.py -o registry-build.py
+          python - <<'EOF'
+          import importlib.util, pathlib
+          spec = importlib.util.spec_from_file_location("b", "registry-build.py")
+          b = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(b)
+          data = next(pathlib.Path("dist").glob("*.rgplugin")).read_bytes()
+          read = b.read_package(data, "rustplanetx")
+          if read:
+              b.check_manifest(read[0], "rustplanetx")
+              b.check_process(data, read[0], "rustplanetx")
+          for p in b.problems:
+              print("error:", p)
+          raise SystemExit(1 if b.problems else 0)
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: |
+            dist/*.rgplugin
+            dist/*.json
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: package
+          path: dist
+      - name: Выпуск GitHub с пакетом и записью реестра
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release download "$RUSTGIS_VERSION" --repo opengeos/RustGIS --pattern 'RustGIS-*-linux-x86_64.tar.gz' --dir "$RUNNER_TEMP"
-          tar xzf "$RUNNER_TEMP"/RustGIS-*-linux-x86_64.tar.gz -C "$RUNNER_TEMP"
-          cli=$(ls "$RUNNER_TEMP"/RustGIS-*-linux-x86_64/rustgis-cli)
-          "$cli" run --no-plugins --plugin dist/rustplanetx/ --sample \
-            --cmd 'map.goToXY={"lon": 56.2294, "lat": 58.0105, "scale": 25000}' \
-            --cmd 'plugin:rustplanetx/open-in-lite' \
-            --cmd 'plugin:rustplanetx/add-source={"source": "ready:opentopomap"}' \
-            --cmd 'plugin:rustplanetx/add-source={"source": "body:mars"}' \
-            --cmd 'plugin:rustplanetx/add-source={"source": "gibs:clouds"}' \
-            --cmd 'map.tiles' | tee "$RUNNER_TEMP/smoke.json"
-          grep -q '"name": "OpenTopoMap"' "$RUNNER_TEMP/smoke.json"
-          grep -q 'planetx-bodies-imagery/main/mars' "$RUNNER_TEMP/smoke.json"
-      - name: Выпуск
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          package="dist/rustplanetx-$version.rgplugin"
-          sha=$(sha256sum "$package" | cut -d' ' -f1)
-          {
-            echo "RustGIS 0.5.0 or newer. Install it from **Plugins › Plugin Manager › Settings › Install From File…**, or with \`rustgis-cli plugins install rustplanetx-$version.rgplugin\`."
-            echo
-            echo "- **Open in PlanetX Lite**: a link to [PlanetX Lite](https://valery35.github.io/planetx-lite/) at the map's view."
-            echo "- **PlanetX panel**: ready basemaps, NASA GIBS on a day, Esri Wayback releases and imagery of the Moon, Mars and other bodies as tile layers."
-            echo
-            echo "SHA-256: \`$sha\`"
-            echo
-            echo "Registry entry for [opengeos/rustgis-plugins](https://github.com/opengeos/rustgis-plugins):"
-            echo
-            echo '```json'
-            cat dist/rustplanetx.json
-            echo '```'
-          } > "$RUNNER_TEMP/notes.md"
-          gh release create "$GITHUB_REF_NAME" "$package" dist/rustplanetx.json --title "RustPlanetX $version" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" dist/*.rgplugin dist/*.json --verify-tag --title "$RELEASE_TAG" --generate-notes
