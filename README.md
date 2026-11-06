@@ -33,6 +33,26 @@ starts the globe as `planetx-lite.exe --rustgis` and returns. The link is in Pla
 `crates/ui/src/rustgislink.rs` and `crates/data/src/rustgis.rs`. A process plugin is not
 sandboxed, and the install prompt says so. The package is for Windows.
 
+## Where changes go
+
+PlanetX comes as three products: the PlanetX plugin for QGIS, PlanetX Lite and RustPlanetX. A
+feature lives in one of them, by its role. Analysis and project layers are the QGIS plugin's,
+viewing, scenes and tours are Lite's, the link with RustGIS is RustPlanetX's. The `.planetx`
+scene and placemark format is shared by all three, in
+[planetx-scene](https://github.com/Valery35/planetx-scene). Details are in PlanetX Lite's
+`doc/PLAN.md`, section «Как снять перегруз».
+
+In PlanetX Lite, the code of RustPlanetX:
+
+- `crates/ui/src/app/rustgis.rs` - the RustGIS section of the globe window and the link steps;
+- `crates/ui/src/rustgislink.rs` and `crates/data/src/rustgis.rs` - the relay client and the
+  reading of RustGIS state;
+- `apps/planetx-rustgis` - the program, built without terrio and add-ins.
+
+A new layer of the globe's catalog is one line in `crates/ui/src/registry.rs`, under the
+build feature of its theme (`live`, `earth`, `imagery`, `analysis`, `sky`, `ai`).
+`apps/planetx-rustgis/Cargo.toml` names the themes RustPlanetX is built with.
+
 ## Packaging
 
 ```sh
