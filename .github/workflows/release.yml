@@ -4,7 +4,8 @@
 #
 # Выпуск по метке v*: программа RustPlanetX собирается из исходников
 # PlanetX Lite на коммите из lite.ref, пакет проверяется scripts/build.py
-# реестра RustGIS и уходит в выпуск GitHub вместе с записью реестра.
+# реестра RustGIS и уходит в выпуск GitHub вместе с записью реестра
+# и символами программы (PDB) для разбора дампов падений.
 
 name: Release
 
@@ -98,6 +99,20 @@ jobs:
             dist/*.json
           if-no-files-found: error
 
+      # Символы программы - для разбора дампов падений. Без них дамп
+      # выпуска 0.5.2 читался только по совпавшей локальной сборке.
+      - name: Символы
+        shell: bash
+        run: |
+          mkdir -p symbols
+          cp lite/target/release/rustplanetx.pdb "symbols/rustplanetx-${{ steps.version.outputs.v }}.pdb"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: symbols
+          path: symbols/*.pdb
+          if-no-files-found: error
+
   publish:
     needs: build
     runs-on: ubuntu-latest
@@ -108,9 +123,13 @@ jobs:
         with:
           name: package
           path: dist
-      - name: Выпуск GitHub с пакетом и записью реестра
+      - uses: actions/download-artifact@v4
+        with:
+          name: symbols
+          path: symbols
+      - name: Выпуск GitHub с пакетом, записью реестра и символами
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" dist/*.rgplugin dist/*.json --verify-tag --title "$RELEASE_TAG" --generate-notes
+        run: gh release create "$RELEASE_TAG" dist/*.rgplugin dist/*.json symbols/*.pdb --verify-tag --title "$RELEASE_TAG" --generate-notes
