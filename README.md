@@ -18,18 +18,29 @@ QGIS with its globe.
 
 1. Install `rustplanetx-<version>.rgplugin` in RustGIS 0.5.0 or newer:
    **Plugins › Plugin Manager › Settings › Install From File…**.
-2. In RustGIS start the **MCP Relay** command (Ctrl+K), or tick **Let your Agents Control
-   RustGIS** in the AI Assistant's settings: RustGIS then starts the relay with the app.
-3. Click **PlanetX Globe** on the **Plugins** tab.
+2. Click **PlanetX Globe** on the **Plugins** tab.
 
-The globe connects to the relay on `127.0.0.1:8767` (`RUSTGIS_MCP_PORT`) with the token file
-RustGIS writes for its own `rustgis-cli mcp --attach`. Nothing leaves the computer.
+A RustGIS with plugin sessions ([opengeos/RustGIS#1553](https://github.com/opengeos/RustGIS/pull/1553))
+links the globe at once. A RustGIS without them needs the relay: start the **MCP Relay**
+command (Ctrl+K), or tick **Let your Agents Control RustGIS** in the AI Assistant's settings.
+The globe then connects to the relay on `127.0.0.1:8767` (`RUSTGIS_MCP_PORT`) with the token
+file RustGIS writes for its own `rustgis-cli mcp --attach`. Nothing leaves the computer.
 
 ## How it works
 
 The plugin is a [process plugin](https://github.com/opengeos/RustGIS/blob/main/docs/plugins.md#process-plugins):
-its program is PlanetX Lite itself. RustGIS runs `planetx-lite.exe rustgis-plugin`, which
-starts the globe as `planetx-lite.exe --rustgis` and returns. The link is in PlanetX Lite,
+its program is PlanetX Lite itself. RustGIS runs `planetx-lite.exe rustgis-plugin`.
+
+- With `"session": true` RustGIS keeps the program running. The globe opens in that process
+  and talks to RustGIS over its standard input and output: no port, no token. It reads the
+  project with `info.project` and the features with `host.features`, and rereads them when
+  RustGIS sends an event. The globe closes with RustGIS.
+- A RustGIS without sessions runs the program once per command. It then starts the globe as
+  `planetx-lite.exe --rustgis` and returns, and the globe uses the MCP relay.
+
+The plugin asks for `edit` (selection, visibility, layers to the project), `files` (layer
+styles and raster tiles come as files, analysis rasters go as GeoTIFF) and `network` (the
+globe follows tile layers with `map.setTiles`). The link is in PlanetX Lite,
 `crates/ui/src/rustgislink.rs` and `crates/data/src/rustgis.rs`. A process plugin is not
 sandboxed, and the install prompt says so. The package is for Windows.
 
@@ -45,8 +56,8 @@ scene and placemark format is shared by all three, in
 In PlanetX Lite, the code of RustPlanetX:
 
 - `crates/ui/src/app/rustgis.rs` - the RustGIS section of the globe window and the link steps;
-- `crates/ui/src/rustgislink.rs` and `crates/data/src/rustgis.rs` - the relay client and the
-  reading of RustGIS state;
+- `crates/ui/src/rustgislink.rs` and `crates/data/src/rustgis.rs` - the session and relay
+  clients and the reading of RustGIS state;
 - `apps/planetx-rustgis` - the program, built without terrio and add-ins.
 
 A new layer of the globe's catalog is one line in `crates/ui/src/registry.rs`, under the
