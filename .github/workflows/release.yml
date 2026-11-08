@@ -30,6 +30,19 @@ jobs:
         shell: bash
         run: echo "ref=$(tr -d '[:space:]' < lite.ref)" >> "$GITHUB_OUTPUT"
 
+      # Номер выпуска - из plugin.json. Тег должен с ним совпадать:
+      # 8 ноября 2026 года тег v0.4.5 ушёл на манифест 0.5.0.
+      - name: Версия расширения
+        id: version
+        shell: bash
+        run: |
+          v=$(python -c "import json; print(json.load(open('plugin.json', encoding='utf-8'))['version'])")
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v$v" ]; then
+            echo "Тег ${GITHUB_REF_NAME} не совпадает с версией plugin.json $v"
+            exit 1
+          fi
+          echo "v=$v" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
         with:
           repository: Valery35/planetx-lite
@@ -42,9 +55,12 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
 
+      # Номер выпуска - в окно «О программе» глобуса.
       - name: Сборка RustPlanetX
         shell: bash
         working-directory: lite
+        env:
+          RUSTPLANETX_VERSION: ${{ steps.version.outputs.v }}
         run: cargo build --release --locked -p planetx-rustgis
 
       - name: Пакет
