@@ -15,6 +15,10 @@ QGIS with its globe.
 - View to the RustGIS layout, on the globe's toolbar, puts the view in a page layout as a
   picture kept in the project, as the PlanetX plugin's View to QGIS layout: in the only layout,
   else the open one, else a new A4 layout.
+- RustGIS's AI Assistant drives the globe: the plugin's commands `fly` (the globe to the map's
+  view tilted 60°, or to a point or an extent with a heading and a tilt) and `layout` (the view
+  to a page layout), and its skill `rustplanetx:globe` telling the assistant when to use them.
+  The commands are on the ribbon too, as 3D View and View to Layout.
 - Terrain, imagery, site analysis, tours, KML and `.planetx` scenes are PlanetX Lite's.
 
 ## Use

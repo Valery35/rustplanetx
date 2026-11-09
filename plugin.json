@@ -1,7 +1,7 @@
 {
   "id": "rustplanetx",
   "name": "RustPlanetX",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "The PlanetX 3D globe linked with the RustGIS map, as the PlanetX plugin is linked with QGIS. The project's layers go to the globe in their colours, rasters and tile layers in their RustGIS look, the globe follows the map and the map follows the globe, a feature clicked on the globe is selected in RustGIS, and a globe layer goes to the project. Terrain, imagery, site analysis, tours and KML are PlanetX Lite's.",
   "author": "Inform++ LLC",
   "homepage": "https://github.com/Valery35/rustplanetx",
@@ -12,13 +12,20 @@
   "minRustgisVersion": "0.5.0",
   "permissions": ["edit", "files", "network"],
   "commands": [
-    { "id": "globe", "label": "PlanetX\nGlobe", "help": "Open the PlanetX 3D globe linked with this map. A RustGIS without plugin sessions needs the MCP Relay command (Ctrl+K) or Let your Agents Control RustGIS in the assistant settings for the link.", "icon": "globe_view", "params": "{}" }
+    { "id": "globe", "label": "PlanetX\nGlobe", "help": "Open the PlanetX 3D globe linked with this map. A RustGIS without plugin sessions needs the MCP Relay command (Ctrl+K) or Let your Agents Control RustGIS in the assistant settings for the link.", "icon": "globe_view", "params": "{}" },
+    { "id": "fly", "label": "3D\nView", "help": "Fly the PlanetX globe to the map's view, tilted by 60 degrees, to see the terrain in 3D. The globe must be open.", "icon": "explore", "params": "{\"lat\"?: degrees, \"lon\"?: degrees, \"distance\"?: metres from the eye to the point (default: the globe's current one), \"extent\"?: [west, south, east, north] in degrees, \"heading\"?: degrees clockwise from north, \"tilt\"?: 0 (looking down) to 90 (to the horizon); with no point and no extent the globe flies to the map's view, tilted 60 unless tilt is given; answers the globe's new lat, lon, distance, heading and tilt}" },
+    { "id": "layout", "label": "View to\nLayout", "help": "Put the PlanetX globe's view in a page layout as a picture kept in the project: in the only layout, else the open one, else a new A4 layout. The globe must be open.", "icon": "picture", "params": "{} (the picture is taken once the globe has stopped and loaded the place; answers the layout's name, or null for the open layout)" }
   ],
+  "skills": ["globe"],
   "i18n": {
     "ru": {
       "The PlanetX 3D globe linked with the RustGIS map, as the PlanetX plugin is linked with QGIS. The project's layers go to the globe in their colours, rasters and tile layers in their RustGIS look, the globe follows the map and the map follows the globe, a feature clicked on the globe is selected in RustGIS, and a globe layer goes to the project. Terrain, imagery, site analysis, tours and KML are PlanetX Lite's.": "Трёхмерный глобус PlanetX, связанный с картой RustGIS, как модуль PlanetX связан с QGIS. Слои проекта ложатся на глобус в своих цветах, растры и тайловые слои - в оформлении RustGIS, глобус идёт за картой, карта - за глобусом, объект, выбранный на глобусе, выделяется в RustGIS, слой глобуса уходит в проект. Рельеф, снимки, анализ участка, туры и KML - от PlanetX Lite.",
       "PlanetX\nGlobe": "Глобус\nPlanetX",
-      "Open the PlanetX 3D globe linked with this map. A RustGIS without plugin sessions needs the MCP Relay command (Ctrl+K) or Let your Agents Control RustGIS in the assistant settings for the link.": "Открыть трёхмерный глобус PlanetX, связанный с этой картой. RustGIS без сессий расширений для связи нужна команда «MCP Relay» (Ctrl+K) или флажок «Let your Agents Control RustGIS» в настройках помощника."
+      "Open the PlanetX 3D globe linked with this map. A RustGIS without plugin sessions needs the MCP Relay command (Ctrl+K) or Let your Agents Control RustGIS in the assistant settings for the link.": "Открыть трёхмерный глобус PlanetX, связанный с этой картой. RustGIS без сессий расширений для связи нужна команда «MCP Relay» (Ctrl+K) или флажок «Let your Agents Control RustGIS» в настройках помощника.",
+      "3D\nView": "Вид\nв 3D",
+      "Fly the PlanetX globe to the map's view, tilted by 60 degrees, to see the terrain in 3D. The globe must be open.": "Перелёт глобуса PlanetX к виду карты с наклоном 60 градусов: рельеф в 3D. Глобус должен быть открыт.",
+      "View to\nLayout": "Вид\nв макет",
+      "Put the PlanetX globe's view in a page layout as a picture kept in the project: in the only layout, else the open one, else a new A4 layout. The globe must be open.": "Вид глобуса PlanetX картинкой в макет, она хранится в проекте: в единственный макет, иначе в открытый, иначе в новый макет A4. Глобус должен быть открыт."
     }
   }
 }

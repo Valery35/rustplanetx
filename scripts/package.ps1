@@ -34,6 +34,17 @@ Copy-Item $manifestPath (Join-Path $folder 'plugin.json') -Force
 New-Item -ItemType Directory -Force (Join-Path $folder 'bin') | Out-Null
 Copy-Item $Lite (Join-Path $folder 'bin\planetx-lite.exe') -Force
 
+# Навыки помощника RustGIS: skills/<имя>/SKILL.md из plugin.json.
+$files = @(@('plugin.json', $manifestPath), @('bin/planetx-lite.exe', $Lite))
+foreach ($skill in @($manifest.skills)) {
+    if (-not $skill) { continue }
+    $source = Join-Path $root "skills\$skill\SKILL.md"
+    if (-not (Test-Path $source)) { throw "no skill $skill at $source" }
+    New-Item -ItemType Directory -Force (Join-Path $folder "skills\$skill") | Out-Null
+    Copy-Item $source (Join-Path $folder "skills\$skill\SKILL.md") -Force
+    $files += , @("skills/$skill/SKILL.md", $source)
+}
+
 # Пакет - ZIP с файлами в корне. Время записей одно и то же, тогда
 # одинаковые файлы дают одинаковый пакет и SHA-256.
 Add-Type -AssemblyName System.IO.Compression
@@ -43,7 +54,7 @@ $stream = [System.IO.File]::Open($package, [System.IO.FileMode]::CreateNew)
 try {
     $zip = New-Object System.IO.Compression.ZipArchive($stream, [System.IO.Compression.ZipArchiveMode]::Create)
     try {
-        foreach ($pair in @(@('plugin.json', $manifestPath), @('bin/planetx-lite.exe', $Lite))) {
+        foreach ($pair in $files) {
             $entry = $zip.CreateEntry($pair[0], [System.IO.Compression.CompressionLevel]::Optimal)
             $entry.LastWriteTime = [DateTimeOffset]::new(2024, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
             $out = $entry.Open()
