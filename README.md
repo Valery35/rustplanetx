@@ -12,6 +12,9 @@ QGIS with its globe.
 - The globe follows the RustGIS map, and the map follows the globe once it stops moving.
 - A feature clicked on the globe with Identify is selected in RustGIS.
 - A layer of the globe goes to the RustGIS project from its menu, To the RustGIS project.
+- View to the RustGIS layout, on the globe's toolbar, puts the view in a page layout as a
+  picture kept in the project, as the PlanetX plugin's View to QGIS layout: in the only layout,
+  else the open one, else a new A4 layout.
 - Terrain, imagery, site analysis, tours, KML and `.planetx` scenes are PlanetX Lite's.
 
 ## Use
