@@ -1,7 +1,7 @@
 {
   "id": "rustplanetx",
   "name": "RustPlanetX",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "The PlanetX 3D globe linked with the RustGIS map, as the PlanetX plugin is linked with QGIS. The project's layers go to the globe in their colours, rasters and tile layers in their RustGIS look, the globe follows the map and the map follows the globe, a feature clicked on the globe is selected in RustGIS, and a globe layer goes to the project. Terrain, imagery, site analysis, tours and KML are PlanetX Lite's.",
   "author": "Inform++ LLC",
   "homepage": "https://github.com/Valery35/rustplanetx",

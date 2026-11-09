@@ -19,6 +19,10 @@ QGIS with its globe.
   view tilted 60°, or to a point or an extent with a heading and a tilt) and `layout` (the view
   to a page layout), and its skill `rustplanetx:globe` telling the assistant when to use them.
   The commands are on the ribbon too, as 3D View and View to Layout.
+- What the PlanetX plugin puts into the QGIS project goes to the RustGIS project, into the group
+  RustPlanetX - globe layers: view objects and pictures of catalogue layers, view contours,
+  placemark layers, pictures on the surface, satellite images, trend maps and Rumsey maps.
+  Analysis rasters come with the colours of the globe.
 - Terrain, imagery, site analysis, tours, KML and `.planetx` scenes are PlanetX Lite's.
 
 ## Use
