@@ -23,6 +23,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Version,
     [string]$Notes = "",
+    # Английский текст для коммита записи реестра: каталог RustGIS англоязычный.
+    [string]$NotesEn = "",
     [string]$LiteRef = "",
     [string]$Lite = "C:\Dev\planetx-lite",
     [string]$Dropbox = (Join-Path $env:USERPROFILE "Dropbox\ИИ\RustPlanetX"),
@@ -54,7 +56,10 @@ function Find-Git {
 $git = Find-Git
 
 function Git([string]$dir) {
-    $out = & $git -C $dir @args 2>&1
+    # Предупреждения git идут в stderr. PowerShell 5.1 при Stop считает их
+    # ошибкой, поэтому здесь Continue, а ошибка - только по коду выхода.
+    $ErrorActionPreference = 'Continue'
+    $out = & $git -C $dir @args 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -notlike 'warning: *' }
     if ($LASTEXITCODE -ne 0) { throw "git $($args -join ' '): $out" }
     return $out
 }
@@ -200,7 +205,7 @@ if (-not $SkipCatalog) {
     Git $ForkDir add registry/rustplanetx.json | Out-Null
     $changed = Git $ForkDir status --porcelain
     if ($changed) {
-        $msg = if ($Notes) { "RustPlanetX ${Version}: $Notes" } else { "RustPlanetX $Version" }
+        $msg = if ($NotesEn) { "RustPlanetX ${Version}: $NotesEn" } else { "RustPlanetX $Version" }
         [IO.File]::WriteAllText($msgFile, "$msg`n", (New-Object Text.UTF8Encoding($false)))
         Git $ForkDir commit -q -F $msgFile | Out-Null
         Remove-Item $msgFile -ErrorAction SilentlyContinue

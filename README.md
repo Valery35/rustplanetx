@@ -92,7 +92,7 @@ and its registry entry to the GitHub release.
 ## Release
 
 ```sh
-powershell -File scripts/release.ps1 -Version 0.5.7 -Notes "what is new"
+powershell -File scripts/release.ps1 -Version 0.5.8 -Notes "что нового" -NotesEn "what is new"
 ```
 
 The script takes the last PlanetX Lite commit on `main` with a green CI, or `-LiteRef`, writes
