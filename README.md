@@ -89,6 +89,19 @@ PlanetX Lite commit named in `lite.ref` (`cargo build --release -p planetx-rustg
 packages it, runs the registry checks of `opengeos/rustgis-plugins` and attaches the package
 and its registry entry to the GitHub release.
 
+## Release
+
+```sh
+powershell -File scripts/release.ps1 -Version 0.5.7 -Notes "what is new"
+```
+
+The script takes the last PlanetX Lite commit on `main` with a green CI, or `-LiteRef`, writes
+it to `lite.ref` and the version to `plugin.json`, commits, tags `v<version>` and pushes. It
+waits for the Release workflow, checks the package against its registry entry, copies it to
+Dropbox with the version note and puts the registry entry to the branch of the open
+`opengeos/rustgis-plugins` pull request, or to a new branch. `-Install` installs the release
+in RustGIS, `-SkipCatalog` leaves the registry alone, `-DryRun` only checks and prints the plan.
+
 ## License
 
 Apache 2.0, © 2026 Inform++ LLC.
