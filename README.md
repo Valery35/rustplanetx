@@ -5,12 +5,12 @@ RustPlanetX links [RustGIS](https://github.com/opengeos/RustGIS) with the
 QGIS with its globe.
 
 - The layers of the RustGIS project are listed in the globe's RustGIS project section, as the
-  PlanetX plugin lists the QGIS project's layers, in the colours of their RustGIS renderer
-  (single symbol, graduated and unique values). In the mode **Layers as on the RustGIS map**,
-  on by default, a layer is on the globe when it is on in the map, and a check on the globe
-  switches it on the map too. Without the mode the layers start switched off, and the checks
-  of the globe are its own. The list follows the project: a layer added, removed or restyled
-  in RustGIS changes on the globe within a second.
+  PlanetX plugin lists the QGIS project's layers. They start switched off: a check shows a
+  layer on the globe in the colours of its RustGIS renderer (single symbol, graduated and
+  unique values). The checks and the opacity of the globe are its own and do not change the
+  RustGIS map.
+  The list follows the project: a layer added, removed or restyled in RustGIS changes on the
+  globe within a second.
 - The globe follows the RustGIS map, and the map follows the globe once it stops moving.
 - A feature clicked on the globe with Identify is selected in RustGIS.
 - A layer of the globe goes to the RustGIS project from its menu, To the RustGIS project.
@@ -27,6 +27,23 @@ QGIS with its globe.
   Analysis rasters come with the colours of the globe.
 - Terrain, imagery, site analysis, tours, KML and `.planetx` scenes are PlanetX Lite's.
 
+## Sources and build
+
+The programs in the package are
+[PlanetX Lite](https://github.com/Valery35/planetx-lite) built for RustGIS, one for each system:
+
+| System | Program | Built on |
+|---|---|---|
+| Windows x86_64 | `bin/planetx-lite.exe` | `windows-latest` |
+| Linux x86_64 | `bin/linux/planetx-lite` | `ubuntu-22.04` (glibc 2.35) |
+| macOS, Apple Silicon and Intel | `bin/macos/planetx-lite` (universal) | `macos-latest` |
+
+The sources are public under Apache 2.0. Each release is built by GitHub Actions in this
+repository: [`.github/workflows/release.yml`](.github/workflows/release.yml) checks out
+PlanetX Lite at the commit in [`lite.ref`](lite.ref) and runs
+`cargo build --release --locked -p planetx-rustgis` with a pinned Rust version on each system.
+The release notes name that commit and the workflow run.
+
 ## Use
 
 1. Install `rustplanetx-<version>.rgplugin` in RustGIS 0.5.0 or newer:
@@ -42,20 +59,21 @@ file RustGIS writes for its own `rustgis-cli mcp --attach`. Nothing leaves the c
 ## How it works
 
 The plugin is a [process plugin](https://github.com/opengeos/RustGIS/blob/main/docs/plugins.md#process-plugins):
-its program is PlanetX Lite itself. RustGIS runs `planetx-lite.exe rustgis-plugin`.
+its program is PlanetX Lite itself. RustGIS runs the program of its system with the argument
+`rustgis-plugin`, on Windows `bin/planetx-lite.exe rustgis-plugin`.
 
 - With `"session": true` RustGIS keeps the program running. The globe opens in that process
   and talks to RustGIS over its standard input and output: no port, no token. It reads the
   project with `info.project` and the features with `host.features`, and rereads them when
   RustGIS sends an event. The globe closes with RustGIS.
 - A RustGIS without sessions runs the program once per command. It then starts the globe as
-  `planetx-lite.exe --rustgis` and returns, and the globe uses the MCP relay.
+  `planetx-lite --rustgis` and returns, and the globe uses the MCP relay.
 
 The plugin asks for `edit` (selection, visibility, layers to the project), `files` (layer
 styles and raster tiles come as files, analysis rasters go as GeoTIFF) and `network` (the
 globe follows tile layers with `map.setTiles`). The link is in PlanetX Lite,
 `crates/ui/src/rustgislink.rs` and `crates/data/src/rustgis.rs`. A process plugin is not
-sandboxed, and the install prompt says so. The package is for Windows.
+sandboxed, and the install prompt says so.
 
 ## Where changes go
 
@@ -80,16 +98,19 @@ build feature of its theme (`live`, `earth`, `imagery`, `analysis`, `sky`, `ai`)
 ## Packaging
 
 ```sh
-powershell -File scripts/package.ps1 -Lite path\to\planetx-lite.exe
+pwsh -File scripts/package.ps1 -Windows rustplanetx.exe -Linux rustplanetx-linux -Mac rustplanetx-macos
 ```
 
 It writes `dist/rustplanetx-<version>.rgplugin`, the folder `dist/rustplanetx/` for
-**Add Plugin Folder…**, and the registry entry `dist/rustplanetx.json`.
+**Add Plugin Folder…**, and the registry entry `dist/rustplanetx.json`. A system without a
+program is left out of the package's `run`. The Unix file mode the registry asks of the Linux
+and macOS programs is kept only when `pwsh` packs on Linux or macOS.
 
-A tag `v<version>` starts the Release workflow. It builds `rustplanetx.exe` from the
-PlanetX Lite commit named in `lite.ref` (`cargo build --release -p planetx-rustgis`),
-packages it, runs the registry checks of `opengeos/rustgis-plugins` and attaches the package
-and its registry entry to the GitHub release.
+A tag `v<version>` starts the Release workflow. It builds the program from the PlanetX Lite
+commit named in `lite.ref` on Windows, Linux and macOS, packs the three into one package on
+Linux, runs the registry checks of `opengeos/rustgis-plugins` and attaches the package, its
+registry entry and the Windows symbols to the GitHub release. Started by hand, the workflow
+builds and checks the package without a release.
 
 ## Release
 

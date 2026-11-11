@@ -3,15 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Выпуск по метке v*: программа RustPlanetX собирается из исходников
-# PlanetX Lite на коммите из lite.ref, пакет проверяется scripts/build.py
-# реестра RustGIS и уходит в выпуск GitHub вместе с записью реестра
-# и символами программы (PDB) для разбора дампов падений.
+# PlanetX Lite на коммите из lite.ref под Windows, Linux и macOS
+# (универсальная, Apple Silicon и Intel), решение автора от 12 ноября
+# 2026 года. Три программы ложатся в один пакет, пакет проверяется
+# scripts/build.py реестра RustGIS и уходит в выпуск GitHub вместе с записью
+# реестра и символами программы Windows (PDB) для разбора дампов падений.
+# Запуск вручную (workflow_dispatch) собирает и проверяет пакет без выпуска.
 
 name: Release
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,8 +25,23 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    name: Программа ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Windows x86_64
+            os: windows-latest
+            platform: windows
+          # Сборка на Ubuntu 22.04 - glibc 2.35, как у пакетов PlanetX Lite.
+          - name: Linux x86_64
+            os: ubuntu-22.04
+            platform: linux
+          - name: macOS
+            os: macos-latest
+            platform: macos
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +56,8 @@ jobs:
         id: version
         shell: bash
         run: |
-          v=$(python -c "import json; print(json.load(open('plugin.json', encoding='utf-8'))['version'])")
+          py=$(command -v python || command -v python3)
+          v=$("$py" -c "import json; print(json.load(open('plugin.json', encoding='utf-8'))['version'])")
           if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v$v" ]; then
             echo "Тег ${GITHUB_REF_NAME} не совпадает с версией plugin.json $v"
             exit 1
@@ -55,6 +75,16 @@ jobs:
         run: |
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          fi
+
+      - name: Системные библиотеки окна
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev
 
       # Номер выпуска - в окно «О программе» глобуса.
       - name: Сборка RustPlanetX
@@ -62,11 +92,73 @@ jobs:
         working-directory: lite
         env:
           RUSTPLANETX_VERSION: ${{ steps.version.outputs.v }}
-        run: cargo build --release --locked -p planetx-rustgis
+        run: |
+          mkdir -p ../out
+          case "${{ matrix.platform }}" in
+            windows)
+              cargo build --release --locked -p planetx-rustgis
+              cp target/release/rustplanetx.exe ../out/
+              cp target/release/rustplanetx.pdb "../out/rustplanetx-${{ steps.version.outputs.v }}.pdb"
+              ;;
+            linux)
+              cargo build --release --locked -p planetx-rustgis
+              strip -o ../out/rustplanetx target/release/rustplanetx
+              ;;
+            macos)
+              # Универсальная программа: одна строка run на macOS у RustGIS
+              # для Apple Silicon и Intel. Подпись ad hoc - без неё macOS
+              # не запускает программу Apple Silicon.
+              for t in aarch64-apple-darwin x86_64-apple-darwin; do
+                cargo build --release --locked -p planetx-rustgis --target "$t"
+                strip -x "target/$t/release/rustplanetx"
+              done
+              lipo -create -output ../out/rustplanetx \
+                target/aarch64-apple-darwin/release/rustplanetx target/x86_64-apple-darwin/release/rustplanetx
+              codesign --force --sign - ../out/rustplanetx
+              lipo -info ../out/rustplanetx
+              ;;
+          esac
+          ls -l ../out
+
+      # Программа Linux: все её библиотеки находятся.
+      - name: Проверка программы Linux
+        if: matrix.platform == 'linux'
+        run: |
+          if ldd out/rustplanetx | grep 'not found'; then exit 1; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: program-${{ matrix.platform }}
+          path: out/*
+          if-no-files-found: error
+
+  # Пакет собирает pwsh на Linux: тогда у программ Linux и macOS в ZIP
+  # режим Unix 0755, его проверяет каталог RustGIS.
+  package:
+    name: Пакет
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      lite: ${{ steps.lite.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Коммит PlanetX Lite
+        id: lite
+        run: echo "ref=$(tr -d '[:space:]' < lite.ref)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: program-*
+          path: programs
 
       - name: Пакет
         shell: pwsh
-        run: ./scripts/package.ps1 -Lite lite/target/release/rustplanetx.exe
+        run: |
+          ./scripts/package.ps1 `
+            -Windows programs/program-windows/rustplanetx.exe `
+            -Linux programs/program-linux/rustplanetx `
+            -Mac programs/program-macos/rustplanetx
 
       - uses: actions/setup-python@v5
         with:
@@ -77,15 +169,23 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/opengeos/rustgis-plugins/main/scripts/build.py -o registry-build.py
           python - <<'EOF'
-          import importlib.util, pathlib
+          import importlib.util, pathlib, zipfile
           spec = importlib.util.spec_from_file_location("b", "registry-build.py")
           b = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(b)
-          data = next(pathlib.Path("dist").glob("*.rgplugin")).read_bytes()
+          path = next(pathlib.Path("dist").glob("*.rgplugin"))
+          data = path.read_bytes()
           read = b.read_package(data, "rustplanetx")
           if read:
               b.check_manifest(read[0], "rustplanetx")
               b.check_process(data, read[0], "rustplanetx")
+              runs = read[0].get("run", {})
+              for platform in ("windows", "linux", "macos"):
+                  if platform not in runs:
+                      b.problems.append(f"the package has no program for {platform}")
+          for i in zipfile.ZipFile(path).infolist():
+              print(f"{i.filename}  {i.file_size:,}  mode {oct(i.external_attr >> 16)}  system {i.create_system}")
+          print(f"{path.name}: {len(data):,} bytes")
           for p in b.problems:
               print("error:", p)
           raise SystemExit(1 if b.problems else 0)
@@ -99,22 +199,9 @@ jobs:
             dist/*.json
           if-no-files-found: error
 
-      # Символы программы - для разбора дампов падений. Без них дамп
-      # выпуска 0.5.2 читался только по совпавшей локальной сборке.
-      - name: Символы
-        shell: bash
-        run: |
-          mkdir -p symbols
-          cp lite/target/release/rustplanetx.pdb "symbols/rustplanetx-${{ steps.version.outputs.v }}.pdb"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: symbols
-          path: symbols/*.pdb
-          if-no-files-found: error
-
   publish:
-    needs: build
+    needs: [build, package]
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -125,11 +212,18 @@ jobs:
           path: dist
       - uses: actions/download-artifact@v4
         with:
-          name: symbols
-          path: symbols
+          name: program-windows
+          path: windows
+      # Заметки называют коммит PlanetX Lite и прогон сборки: по ним
+      # сопровождающие каталога RustGIS проверяют, из каких исходников
+      # собрана программа пакета (обзор заявки opengeos/rustgis-plugins#62).
       - name: Выпуск GitHub с пакетом, записью реестра и символами
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" dist/*.rgplugin dist/*.json symbols/*.pdb --verify-tag --title "$RELEASE_TAG" --generate-notes
+          LITE_REF: ${{ needs.package.outputs.lite }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          notes="Built from PlanetX Lite https://github.com/Valery35/planetx-lite/tree/${LITE_REF} by ${RUN_URL} (cargo build --release --locked -p planetx-rustgis) for Windows x86_64, Linux x86_64 and macOS (Apple Silicon and Intel)."
+          gh release create "$RELEASE_TAG" dist/*.rgplugin dist/*.json windows/*.pdb --verify-tag --title "$RELEASE_TAG" --notes "$notes" --generate-notes

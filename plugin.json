@@ -2,13 +2,17 @@
   "id": "rustplanetx",
   "name": "RustPlanetX",
   "version": "0.5.8",
-  "description": "The PlanetX 3D globe linked with the RustGIS map, as the PlanetX plugin is linked with QGIS. The project's layers go to the globe in their colours, rasters and tile layers in their RustGIS look, the globe follows the map and the map follows the globe, a feature clicked on the globe is selected in RustGIS, and a globe layer goes to the project. Terrain, imagery, site analysis, tours and KML are PlanetX Lite's.",
+  "description": "The PlanetX 3D globe linked with the RustGIS map, as the PlanetX plugin is linked with QGIS. The project's layers go to the globe in their colours, rasters and tile layers in their RustGIS look, the globe follows the map and the map follows the globe, a feature clicked on the globe is selected in RustGIS, and a globe layer goes to the project. Terrain, imagery, site analysis, tours and KML are PlanetX Lite's. For Windows, Linux and macOS.",
   "author": "Inform++ LLC",
   "homepage": "https://github.com/Valery35/rustplanetx",
   "license": "Apache-2.0",
   "runtime": "process",
   "session": true,
-  "run": { "windows": ["bin/planetx-lite.exe", "rustgis-plugin"] },
+  "run": {
+    "windows": ["bin/planetx-lite.exe", "rustgis-plugin"],
+    "linux": ["bin/linux/planetx-lite", "rustgis-plugin"],
+    "macos": ["bin/macos/planetx-lite", "rustgis-plugin"]
+  },
   "minRustgisVersion": "0.5.0",
   "permissions": ["edit", "files", "network"],
   "commands": [
@@ -19,7 +23,7 @@
   "skills": ["globe"],
   "i18n": {
     "ru": {
-      "The PlanetX 3D globe linked with the RustGIS map, as the PlanetX plugin is linked with QGIS. The project's layers go to the globe in their colours, rasters and tile layers in their RustGIS look, the globe follows the map and the map follows the globe, a feature clicked on the globe is selected in RustGIS, and a globe layer goes to the project. Terrain, imagery, site analysis, tours and KML are PlanetX Lite's.": "Трёхмерный глобус PlanetX, связанный с картой RustGIS, как модуль PlanetX связан с QGIS. Слои проекта ложатся на глобус в своих цветах, растры и тайловые слои - в оформлении RustGIS, глобус идёт за картой, карта - за глобусом, объект, выбранный на глобусе, выделяется в RustGIS, слой глобуса уходит в проект. Рельеф, снимки, анализ участка, туры и KML - от PlanetX Lite.",
+      "The PlanetX 3D globe linked with the RustGIS map, as the PlanetX plugin is linked with QGIS. The project's layers go to the globe in their colours, rasters and tile layers in their RustGIS look, the globe follows the map and the map follows the globe, a feature clicked on the globe is selected in RustGIS, and a globe layer goes to the project. Terrain, imagery, site analysis, tours and KML are PlanetX Lite's. For Windows, Linux and macOS.": "Трёхмерный глобус PlanetX, связанный с картой RustGIS, как модуль PlanetX связан с QGIS. Слои проекта ложатся на глобус в своих цветах, растры и тайловые слои - в оформлении RustGIS, глобус идёт за картой, карта - за глобусом, объект, выбранный на глобусе, выделяется в RustGIS, слой глобуса уходит в проект. Рельеф, снимки, анализ участка, туры и KML - от PlanetX Lite. Для Windows, Linux и macOS.",
       "PlanetX\nGlobe": "Глобус\nPlanetX",
       "Open the PlanetX 3D globe linked with this map. A RustGIS without plugin sessions needs the MCP Relay command (Ctrl+K) or Let your Agents Control RustGIS in the assistant settings for the link.": "Открыть трёхмерный глобус PlanetX, связанный с этой картой. RustGIS без сессий расширений для связи нужна команда «MCP Relay» (Ctrl+K) или флажок «Let your Agents Control RustGIS» в настройках помощника.",
       "3D\nView": "Вид\nв 3D",
