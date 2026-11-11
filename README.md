@@ -5,10 +5,12 @@ RustPlanetX links [RustGIS](https://github.com/opengeos/RustGIS) with the
 QGIS with its globe.
 
 - The layers of the RustGIS project are listed in the globe's RustGIS project section, as the
-  PlanetX plugin lists the QGIS project's layers. They start switched off: a check shows a
-  layer on the globe in the colours of its RustGIS renderer (single symbol, graduated and
-  unique values). The list follows the project: a layer added, removed or restyled in RustGIS
-  changes on the globe within a second.
+  PlanetX plugin lists the QGIS project's layers, in the colours of their RustGIS renderer
+  (single symbol, graduated and unique values). In the mode **Layers as on the RustGIS map**,
+  on by default, a layer is on the globe when it is on in the map, and a check on the globe
+  switches it on the map too. Without the mode the layers start switched off, and the checks
+  of the globe are its own. The list follows the project: a layer added, removed or restyled
+  in RustGIS changes on the globe within a second.
 - The globe follows the RustGIS map, and the map follows the globe once it stops moving.
 - A feature clicked on the globe with Identify is selected in RustGIS.
 - A layer of the globe goes to the RustGIS project from its menu, To the RustGIS project.
