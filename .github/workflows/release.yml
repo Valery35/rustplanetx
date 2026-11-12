@@ -96,24 +96,24 @@ jobs:
           mkdir -p ../out
           case "${{ matrix.platform }}" in
             windows)
-              cargo build --release --locked -p planetx-rustgis
-              cp target/release/rustplanetx.exe ../out/
-              cp target/release/rustplanetx.pdb "../out/rustplanetx-${{ steps.version.outputs.v }}.pdb"
+              cargo build --profile size --locked -p planetx-rustgis
+              cp target/size/rustplanetx.exe ../out/
+              cp target/size/rustplanetx.pdb "../out/rustplanetx-${{ steps.version.outputs.v }}.pdb"
               ;;
             linux)
-              cargo build --release --locked -p planetx-rustgis
-              strip -o ../out/rustplanetx target/release/rustplanetx
+              cargo build --profile size --locked -p planetx-rustgis
+              strip -o ../out/rustplanetx target/size/rustplanetx
               ;;
             macos)
               # Универсальная программа: одна строка run на macOS у RustGIS
               # для Apple Silicon и Intel. Подпись ad hoc - без неё macOS
               # не запускает программу Apple Silicon.
               for t in aarch64-apple-darwin x86_64-apple-darwin; do
-                cargo build --release --locked -p planetx-rustgis --target "$t"
-                strip -x "target/$t/release/rustplanetx"
+                cargo build --profile size --locked -p planetx-rustgis --target "$t"
+                strip -x "target/$t/size/rustplanetx"
               done
               lipo -create -output ../out/rustplanetx \
-                target/aarch64-apple-darwin/release/rustplanetx target/x86_64-apple-darwin/release/rustplanetx
+                target/aarch64-apple-darwin/size/rustplanetx target/x86_64-apple-darwin/size/rustplanetx
               codesign --force --sign - ../out/rustplanetx
               lipo -info ../out/rustplanetx
               ;;
@@ -225,5 +225,5 @@ jobs:
           LITE_REF: ${{ needs.package.outputs.lite }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          notes="Built from PlanetX Lite https://github.com/Valery35/planetx-lite/tree/${LITE_REF} by ${RUN_URL} (cargo build --release --locked -p planetx-rustgis) for Windows x86_64, Linux x86_64 and macOS (Apple Silicon and Intel)."
+          notes="Built from PlanetX Lite https://github.com/Valery35/planetx-lite/tree/${LITE_REF} by ${RUN_URL} (cargo build --profile size --locked -p planetx-rustgis) for Windows x86_64, Linux x86_64 and macOS (Apple Silicon and Intel)."
           gh release create "$RELEASE_TAG" dist/*.rgplugin dist/*.json windows/*.pdb --verify-tag --title "$RELEASE_TAG" --notes "$notes" --generate-notes

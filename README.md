@@ -41,7 +41,9 @@ The programs in the package are
 The sources are public under Apache 2.0. Each release is built by GitHub Actions in this
 repository: [`.github/workflows/release.yml`](.github/workflows/release.yml) checks out
 PlanetX Lite at the commit in [`lite.ref`](lite.ref) and runs
-`cargo build --release --locked -p planetx-rustgis` with a pinned Rust version on each system.
+`cargo build --profile size --locked -p planetx-rustgis` with a pinned Rust version on each system.
+The `size` profile of PlanetX Lite is its release build with LTO and `opt-level = "s"`, keeping
+the renderer, terrain, wgpu, egui and the image decoders at `opt-level = 3`.
 The release notes name that commit and the workflow run.
 
 ## Use
