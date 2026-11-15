@@ -59,6 +59,10 @@ function Git([string]$dir) {
     # Предупреждения git идут в stderr. PowerShell 5.1 при Stop считает их
     # ошибкой, поэтому здесь Continue, а ошибка - только по коду выхода.
     $ErrorActionPreference = 'Continue'
+    # Путь - заново при каждом вызове: 13 ноября 2026 года GitHub Desktop
+    # обновился посреди выпуска, папка app-3.6.7 с git пропала, и шаг
+    # каталога не прошёл.
+    $git = Find-Git
     $out = & $git -C $dir @args 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -notlike 'warning: *' }
     if ($LASTEXITCODE -ne 0) { throw "git $($args -join ' '): $out" }
     return $out
@@ -147,23 +151,31 @@ $rel = Invoke-RestMethod "$api/Valery35/rustplanetx/releases/tags/$tag" -Headers
 $work = Join-Path ([IO.Path]::GetTempPath()) "rustplanetx-$Version"
 New-Item -ItemType Directory -Force $work | Out-Null
 $pkgName = "rustplanetx-$Version.rgplugin"
-foreach ($a in $rel.assets | Where-Object { $_.name -eq $pkgName -or $_.name -eq 'rustplanetx.json' }) {
+foreach ($a in $rel.assets | Where-Object { $_.name -like "rustplanetx-$Version*.rgplugin" -or $_.name -eq 'rustplanetx.json' }) {
     Invoke-WebRequest $a.browser_download_url -OutFile (Join-Path $work $a.name) -Headers $headers
 }
+# Общий пакет (Dropbox, установка) и пакеты, которые называет запись реестра:
+# он сам или пакет каждой системы (scripts/package.ps1 -PerPlatform).
 $pkg = Join-Path $work $pkgName
 $entryPath = Join-Path $work 'rustplanetx.json'
 $entry = Get-Content $entryPath -Raw | ConvertFrom-Json
-$pkgSha = (Get-FileHash $pkg -Algorithm SHA256).Hash.ToLower()
-if ($entry.source.sha256 -ne $pkgSha) { throw "SHA-256 пакета $pkgSha не совпадает с записью реестра $($entry.source.sha256)" }
+$named = if ($entry.source.url) { @(@{ url = $entry.source.url; sha256 = $entry.source.sha256 }) } else { @($entry.source.PSObject.Properties | ForEach-Object { @{ url = $_.Value.url; sha256 = $_.Value.sha256 } }) }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [IO.Compression.ZipFile]::OpenRead($pkg)
-try {
-    $reader = New-Object IO.StreamReader(($zip.Entries | Where-Object FullName -eq 'plugin.json').Open())
-    $inside = ($reader.ReadToEnd() | ConvertFrom-Json).version
-    $reader.Close()
-} finally { $zip.Dispose() }
-if ($inside -ne $Version) { throw "в пакете plugin.json версии $inside, а не $Version" }
-Say "Пакет сверен: $pkgSha"
+foreach ($n in @(@{ url = $pkgName; sha256 = $null }) + $named) {
+    $file = Join-Path $work ($n.url -split '/')[-1]
+    if (-not (Test-Path $file)) { throw "в выпуске нет $(Split-Path -Leaf $file)" }
+    $fileSha = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+    if ($n.sha256 -and $n.sha256 -ne $fileSha) { throw "SHA-256 $(Split-Path -Leaf $file) $fileSha не совпадает с записью реестра $($n.sha256)" }
+    $zip = [IO.Compression.ZipFile]::OpenRead($file)
+    try {
+        $reader = New-Object IO.StreamReader(($zip.Entries | Where-Object FullName -eq 'plugin.json').Open())
+        $inside = ($reader.ReadToEnd() | ConvertFrom-Json).version
+        $reader.Close()
+    } finally { $zip.Dispose() }
+    if ($inside -ne $Version) { throw "в $(Split-Path -Leaf $file) plugin.json версии $inside, а не $Version" }
+    Say ("Сверен {0}: {1:N0} байт, {2}" -f (Split-Path -Leaf $file), (Get-Item $file).Length, $fileSha)
+}
+$pkgSha = (Get-FileHash $pkg -Algorithm SHA256).Hash.ToLower()
 
 # 4. Dropbox.
 if (Test-Path $Dropbox) {
@@ -192,7 +204,7 @@ if (Test-Path $Dropbox) {
 if (-not $SkipCatalog) {
     if (-not (Test-Path (Join-Path $ForkDir '.git'))) {
         New-Item -ItemType Directory -Force (Split-Path $ForkDir) | Out-Null
-        & $git clone -q https://github.com/Valery35/rustgis-plugins.git $ForkDir
+        & (Find-Git) clone -q https://github.com/Valery35/rustgis-plugins.git $ForkDir
         if ($LASTEXITCODE -ne 0) { throw 'форк rustgis-plugins не клонируется' }
         Git $ForkDir remote add upstream https://github.com/opengeos/rustgis-plugins.git | Out-Null
     }

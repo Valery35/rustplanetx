@@ -155,7 +155,12 @@ jobs:
       - name: Пакет
         shell: pwsh
         run: |
-          ./scripts/package.ps1 `
+          # Запись каталога - пакет Windows: общий пакет больше 25 МиБ
+          # предпросмотра заявки, а запись с пакетами по системам RustGIS 0.6.0
+          # пропускает. Linux и macOS - общий пакет выпуска. Когда выйдет
+          # RustGIS с пакетами по системам (opengeos/RustGIS ae748ba), здесь
+          # вместо -CatalogPlatform windows ключ -PerPlatform.
+          ./scripts/package.ps1 -CatalogPlatform windows `
             -Windows programs/program-windows/rustplanetx.exe `
             -Linux programs/program-linux/rustplanetx `
             -Mac programs/program-macos/rustplanetx
@@ -169,23 +174,35 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/opengeos/rustgis-plugins/main/scripts/build.py -o registry-build.py
           python - <<'EOF'
-          import importlib.util, pathlib, zipfile
+          import importlib.util, json, pathlib, zipfile
           spec = importlib.util.spec_from_file_location("b", "registry-build.py")
           b = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(b)
-          path = next(pathlib.Path("dist").glob("*.rgplugin"))
-          data = path.read_bytes()
-          read = b.read_package(data, "rustplanetx")
-          if read:
-              b.check_manifest(read[0], "rustplanetx")
-              b.check_process(data, read[0], "rustplanetx")
-              runs = read[0].get("run", {})
-              for platform in ("windows", "linux", "macos"):
-                  if platform not in runs:
-                      b.problems.append(f"the package has no program for {platform}")
-          for i in zipfile.ZipFile(path).infolist():
-              print(f"{i.filename}  {i.file_size:,}  mode {oct(i.external_attr >> 16)}  system {i.create_system}")
-          print(f"{path.name}: {len(data):,} bytes")
+          # Общий пакет - программы всех трёх систем; пакет системы - только
+          # её программа и тот же plugin.json, кроме run (как требует build.py).
+          platforms = ("windows", "linux", "macos")
+          manifests = {}
+          for path in sorted(pathlib.Path("dist").glob("*.rgplugin")):
+              data = path.read_bytes()
+              only = next((p for p in platforms if path.stem.endswith("-" + p)), None)
+              read = b.read_package(data, path.name)
+              if read:
+                  b.check_manifest(read[0], path.name)
+                  b.check_process(data, read[0], path.name)
+                  runs = set(read[0].get("run", {}))
+                  want = {only} if only else set(platforms)
+                  if runs != want:
+                      b.problems.append(f"{path.name}: run is for {sorted(runs)}, not {sorted(want)}")
+                  manifests[path.name] = {k: v for k, v in read[0].items() if k != "run"}
+              for i in zipfile.ZipFile(path).infolist():
+                  print(f"{path.name}: {i.filename}  {i.file_size:,}  mode {oct(i.external_attr >> 16)}  system {i.create_system}")
+              print(f"{path.name}: {len(data):,} bytes")
+              if only and len(data) > 25 * 1024 * 1024:
+                  b.problems.append(f"{path.name} is over the 25 MiB of the registry preview")
+          if len({json.dumps(m, sort_keys=True) for m in manifests.values()}) > 1:
+              b.problems.append("the packages' plugin.json differ in more than 'run'")
+          if len(manifests) != 4:
+              b.problems.append(f"{len(manifests)} packages, not the shared one and one per platform")
           for p in b.problems:
               print("error:", p)
           raise SystemExit(1 if b.problems else 0)
@@ -225,5 +242,5 @@ jobs:
           LITE_REF: ${{ needs.package.outputs.lite }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          notes="Built from PlanetX Lite https://github.com/Valery35/planetx-lite/tree/${LITE_REF} by ${RUN_URL} (cargo build --profile size --locked -p planetx-rustgis) for Windows x86_64, Linux x86_64 and macOS (Apple Silicon and Intel)."
+          notes="Built from PlanetX Lite https://github.com/Valery35/planetx-lite/tree/${LITE_REF} by ${RUN_URL} (cargo build --profile size --locked -p planetx-rustgis) for Windows x86_64, Linux x86_64 and macOS (Apple Silicon and Intel). rustplanetx-<version>.rgplugin holds the three programs; rustplanetx-<version>-<platform>.rgplugin holds the program of one platform."
           gh release create "$RELEASE_TAG" dist/*.rgplugin dist/*.json windows/*.pdb --verify-tag --title "$RELEASE_TAG" --notes "$notes" --generate-notes

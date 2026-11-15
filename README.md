@@ -103,15 +103,22 @@ build feature of its theme (`live`, `earth`, `imagery`, `analysis`, `sky`, `ai`)
 pwsh -File scripts/package.ps1 -Windows rustplanetx.exe -Linux rustplanetx-linux -Mac rustplanetx-macos
 ```
 
-It writes `dist/rustplanetx-<version>.rgplugin`, the folder `dist/rustplanetx/` for
+It writes `dist/rustplanetx-<version>.rgplugin` with every program, a package of one system
+`dist/rustplanetx-<version>-<system>.rgplugin` for each, the folder `dist/rustplanetx/` for
 **Add Plugin Folder…**, and the registry entry `dist/rustplanetx.json`. A system without a
-program is left out of the package's `run`. The Unix file mode the registry asks of the Linux
-and macOS programs is kept only when `pwsh` packs on Linux or macOS.
+program is left out of the package's `run`. With `-PerPlatform` the registry entry names the
+package of each system, and RustGIS downloads only its own. With `-CatalogPlatform windows`
+the entry names the Windows package. The preview of a registry pull request holds packages up
+to 25 MiB, and RustGIS 0.6.0 skips an entry with a package per system. Without either, the
+entry names the package with every program. The release uses `-CatalogPlatform windows` until
+a RustGIS release reads a package per system. The Unix file mode the registry asks of the Linux and macOS
+programs is kept only when `pwsh` packs on Linux or macOS.
 
 A tag `v<version>` starts the Release workflow. It builds the program from the PlanetX Lite
-commit named in `lite.ref` on Windows, Linux and macOS, packs the three into one package on
-Linux, runs the registry checks of `opengeos/rustgis-plugins` and attaches the package, its
-registry entry and the Windows symbols to the GitHub release. Started by hand, the workflow
+commit named in `lite.ref` on Windows, Linux and macOS, packs them on Linux into the package
+with every program and a package for each system, runs the registry checks of
+`opengeos/rustgis-plugins` on each and attaches the packages, the registry entry and the
+Windows symbols to the GitHub release. Started by hand, the workflow
 builds and checks the package without a release.
 
 ## Release
