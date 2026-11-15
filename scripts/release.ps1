@@ -1,4 +1,4 @@
-﻿# RustPlanetX - расширение RustGIS для PlanetX Lite.
+# RustPlanetX - расширение RustGIS для PlanetX Lite.
 # Copyright (C) 2026 ООО «Информ++». Лицензия Apache 2.0.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -213,7 +213,7 @@ if (-not $SkipCatalog) {
     Git $ForkDir fetch -q upstream main | Out-Null
     $pr = (Invoke-RestMethod "$api/opengeos/rustgis-plugins/pulls?state=open&per_page=50" -Headers $headers) | Where-Object { $_.user.login -eq 'Valery35' -and $_.head.ref -like 'rustplanetx*' } | Select-Object -First 1
     $branch = if ($pr) { $pr.head.ref } else { "rustplanetx-$Version" }
-    if ($pr) { Git $ForkDir checkout -q -B $branch "origin/$branch" | Out-Null } else { Git $ForkDir checkout -q -B $branch upstream/main | Out-Null }
+    if ($pr) { Git $ForkDir checkout -q -f -B $branch "origin/$branch" | Out-Null } else { Git $ForkDir checkout -q -f -B $branch upstream/main | Out-Null }
     Copy-Item $entryPath (Join-Path $ForkDir 'registry\rustplanetx.json') -Force
     Git $ForkDir add registry/rustplanetx.json | Out-Null
     $changed = Git $ForkDir status --porcelain
