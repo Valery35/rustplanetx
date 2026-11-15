@@ -44,7 +44,8 @@ function Say([string]$text) { Write-Output "== $text" }
 
 # git - из PATH или из GitHub Desktop: у автора git в PATH нет.
 function Find-Git {
-    $cmd = Get-Command git -ErrorAction SilentlyContinue
+    # Только программа: функция Git ниже - тоже «git» для Get-Command.
+    $cmd = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($cmd) { return $cmd.Source }
     $desk = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'GitHubDesktop') -Directory -Filter 'app-*' -ErrorAction SilentlyContinue | Sort-Object Name -Descending
     foreach ($d in $desk) {
