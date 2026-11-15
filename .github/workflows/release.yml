@@ -244,3 +244,13 @@ jobs:
         run: |
           notes="Built from PlanetX Lite https://github.com/Valery35/planetx-lite/tree/${LITE_REF} by ${RUN_URL} (cargo build --profile size --locked -p planetx-rustgis) for Windows x86_64, Linux x86_64 and macOS (Apple Silicon and Intel). rustplanetx-<version>.rgplugin holds the three programs; rustplanetx-<version>-<platform>.rgplugin holds the program of one platform."
           gh release create "$RELEASE_TAG" dist/*.rgplugin dist/*.json windows/*.pdb --verify-tag --title "$RELEASE_TAG" --notes "$notes" --generate-notes
+
+  # Выпуск создан ключом GITHUB_TOKEN, событие release другие сценарии не
+  # запускает - сообщение автору в Telegram зовётся отсюда.
+  telegram:
+    needs: publish
+    if: github.ref_type == 'tag'
+    uses: ./.github/workflows/telegram-release.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
