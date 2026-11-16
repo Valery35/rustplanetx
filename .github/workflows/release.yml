@@ -155,12 +155,10 @@ jobs:
       - name: Пакет
         shell: pwsh
         run: |
-          # Запись каталога - пакет Windows: общий пакет больше 25 МиБ
-          # предпросмотра заявки, а запись с пакетами по системам RustGIS 0.6.0
-          # пропускает. Linux и macOS - общий пакет выпуска. Когда выйдет
-          # RustGIS с пакетами по системам (opengeos/RustGIS ae748ba), здесь
-          # вместо -CatalogPlatform windows ключ -PerPlatform.
-          ./scripts/package.ps1 -CatalogPlatform windows `
+          # Запись каталога называет пакет каждой системы, RustGIS качает только
+          # свой. Общий пакет больше 25 МиБ предпросмотра заявки. Пакеты по
+          # системам RustGIS читает с 0.7.0 - это minRustgisVersion в plugin.json.
+          ./scripts/package.ps1 -PerPlatform `
             -Windows programs/program-windows/rustplanetx.exe `
             -Linux programs/program-linux/rustplanetx `
             -Mac programs/program-macos/rustplanetx

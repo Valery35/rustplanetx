@@ -48,15 +48,15 @@ The release notes name that commit and the workflow run.
 
 ## Use
 
-1. Install `rustplanetx-<version>.rgplugin` in RustGIS 0.5.0 or newer:
+1. Install RustPlanetX in RustGIS 0.7.0 or newer from **Plugins › Plugin Manager › Browse**.
+   RustGIS downloads the package of its own system. The packages are also on the
+   [releases](https://github.com/Valery35/rustplanetx/releases) page, for
    **Plugins › Plugin Manager › Settings › Install From File…**.
 2. Click **PlanetX Globe** on the **Plugins** tab.
 
-A RustGIS with plugin sessions ([opengeos/RustGIS#1553](https://github.com/opengeos/RustGIS/pull/1553))
-links the globe at once. A RustGIS without them needs the relay: start the **MCP Relay**
-command (Ctrl+K), or tick **Let your Agents Control RustGIS** in the AI Assistant's settings.
-The globe then connects to the relay on `127.0.0.1:8767` (`RUSTGIS_MCP_PORT`) with the token
-file RustGIS writes for its own `rustgis-cli mcp --attach`. Nothing leaves the computer.
+RustGIS keeps the plugin running in a session
+([opengeos/RustGIS#1553](https://github.com/opengeos/RustGIS/pull/1553)), and the globe is
+linked at once.
 
 ## How it works
 
@@ -68,8 +68,6 @@ its program is PlanetX Lite itself. RustGIS runs the program of its system with 
   and talks to RustGIS over its standard input and output: no port, no token. It reads the
   project with `info.project` and the features with `host.features`, and rereads them when
   RustGIS sends an event. The globe closes with RustGIS.
-- A RustGIS without sessions runs the program once per command. It then starts the globe as
-  `planetx-lite --rustgis` and returns, and the globe uses the MCP relay.
 
 The plugin asks for `edit` (selection, visibility, layers to the project), `files` (layer
 styles and raster tiles come as files, analysis rasters go as GeoTIFF) and `network` (the
@@ -108,10 +106,10 @@ It writes `dist/rustplanetx-<version>.rgplugin` with every program, a package of
 **Add Plugin Folder…**, and the registry entry `dist/rustplanetx.json`. A system without a
 program is left out of the package's `run`. With `-PerPlatform` the registry entry names the
 package of each system, and RustGIS downloads only its own. With `-CatalogPlatform windows`
-the entry names the Windows package. The preview of a registry pull request holds packages up
-to 25 MiB, and RustGIS 0.6.0 skips an entry with a package per system. Without either, the
-entry names the package with every program. The release uses `-CatalogPlatform windows` until
-a RustGIS release reads a package per system. The Unix file mode the registry asks of the Linux and macOS
+the entry names the Windows package. Without either, the entry names the package with every
+program. The release uses `-PerPlatform`: the preview of a registry pull request holds packages
+up to 25 MiB, and RustGIS reads a package per system from 0.7.0, the plugin's
+`minRustgisVersion`. The Unix file mode the registry asks of the Linux and macOS
 programs is kept only when `pwsh` packs on Linux or macOS.
 
 A tag `v<version>` starts the Release workflow. It builds the program from the PlanetX Lite
